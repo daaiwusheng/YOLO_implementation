@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+from torchinfo import summary
 
 
 # torch.nn.Conv2d(in_channels, out_channels, kernel_size, stride=1, padding=0, dilation=1, groups=1, bias=True, padding_mode='zeros')
@@ -83,7 +84,7 @@ class BackBone(nn.Module):
             nn.BatchNorm2d(512),
             nn.LeakyReLU(),
             # 4.6 sublayer
-            nn.Conv2d(512, 1024, 3, padding=1),   # output width=28
+            nn.Conv2d(512, 1024, 3, padding=1),  # output width=28
             nn.BatchNorm2d(1024),
             nn.LeakyReLU(),
 
@@ -118,31 +119,57 @@ class BackBone(nn.Module):
             nn.BatchNorm2d(1024),
             nn.LeakyReLU(),
             # 6.2 sublayer
-            nn.Conv2d(1024, 1024, 3, padding=1),  # output width=7
+            nn.Conv2d(1024, 1024, 3, padding=1),  # output width=7, here the feature map is 7*7*1024 = 50176
             nn.BatchNorm2d(1024),
             nn.LeakyReLU(),
 
         )
 
+    def forward(self, x):
+        return self.feature_calculator(x)
 
 
+class DetectOriginal(nn.Module):
+    def __init__(self, number_bbox=2, number_classes=20):
+        super(DetectOriginal, self).__init__()
+        self.detector = nn.Sequential(
+            nn.Linear(7 * 7 * 1024, 4096),
+            nn.LeakyReLU(),
+            nn.Dropout(0.5),
+
+            nn.Linear(4096, 7 * 7 * (5 * number_bbox + number_classes))
+        )
+
+    def forward(self, x):
+        x = x.flatten(start_dim=1)
+        return self.detector(x)
 
 
+class YoloVOne(nn.Module):
+    def __init__(self, number_grid=7, number_bbox=2, number_classes=20):
+        super(YoloVOne, self).__init__()
+        self.number_grid = number_grid
+        self.number_bbox = number_bbox
+        self.number_classes = number_classes
+
+        self.feature_extractor = BackBone(number_classes=self.number_classes)
+        self.detector = DetectOriginal(number_bbox=self.number_bbox, number_classes=self.number_classes)
+
+    def forward(self, x):
+        x = self.feature_extractor(x)
+        x = self.detector(x)
+        x = x.view(-1, self.number_grid, self.number_grid, 5 * self.number_bbox + self.number_classes)
+        return x
 
 
+if __name__ == '__main__':
+    yolo = YoloVOne()
 
+    # Dummy image
+    image = torch.randn(2, 3, 448, 448)  # torch.Size([2, 3, 448, 448])
 
+    output = yolo(image)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+    print(output.size())  # torch.Size([2, 7, 7, 30])
+    # 打印模型总结
+    summary(yolo, input_size=(1, 3, 448, 448))

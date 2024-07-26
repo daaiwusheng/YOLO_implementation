@@ -1,5 +1,7 @@
 import torch.nn as nn
 import torch
+
+
 class Conv(nn.Module):
     def __init__(self, c1, c2, k, s=1, p=None, d=1, g=1, act=True):
         super(Conv, self).__init__()
@@ -27,3 +29,21 @@ class Flatten(nn.Module):
     @staticmethod
     def forward(x):
         return x.view(x.size(0), -1)
+
+
+if __name__ == '__main__':
+    # 假设输入的特征图形状为 (batch_size, channels, height, width)
+    feature_map = torch.randn(3, 1024, 7, 7)  # 这里 batch_size = 1
+
+    # 使用 view 方法展平
+    flattened = feature_map.view(feature_map.size(0), -1)
+
+    print(flattened.shape)  # 输出形状: torch.Size([1, 50176])
+
+    # 假设输入的特征图形状为 (batch_size, channels, height, width)
+    feature_map = torch.randn(1, 1024, 7, 7)
+
+    # 使用 flatten 方法展平
+    flattened = feature_map.flatten(start_dim=1)
+
+    print(flattened.shape)  # 输出形状: torch.Size([1, 50176])
