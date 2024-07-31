@@ -1,6 +1,7 @@
 import torch.nn as nn
 import torch
-
+import numpy as np
+import cv2
 
 class Conv(nn.Module):
     def __init__(self, c1, c2, k, s=1, p=None, d=1, g=1, act=True):
@@ -32,18 +33,21 @@ class Flatten(nn.Module):
 
 
 if __name__ == '__main__':
-    # 假设输入的特征图形状为 (batch_size, channels, height, width)
-    feature_map = torch.randn(3, 1024, 7, 7)  # 这里 batch_size = 1
+    img = np.zeros((600, 600), 'uint8')
 
-    # 使用 view 方法展平
-    flattened = feature_map.view(feature_map.size(0), -1)
+    # 创建一个示例图像
+    image = np.zeros((448, 448, 3), dtype=np.uint8)
 
-    print(flattened.shape)  # 输出形状: torch.Size([1, 50176])
+    # 定义矩形参数
+    top_left = (50, 50)
+    bottom_right = (200, 200)
+    color = (0, 255, 0)  # 绿色
+    thickness = 2
 
-    # 假设输入的特征图形状为 (batch_size, channels, height, width)
-    feature_map = torch.randn(1, 1024, 7, 7)
+    # 绘制矩形
+    image = cv2.rectangle(image, top_left, bottom_right, color, thickness)
 
-    # 使用 flatten 方法展平
-    flattened = feature_map.flatten(start_dim=1)
-
-    print(flattened.shape)  # 输出形状: torch.Size([1, 50176])
+    # 显示图像
+    cv2.imshow('Image with Rectangle', image)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
