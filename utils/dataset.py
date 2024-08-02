@@ -5,7 +5,7 @@ import torchvision.transforms as transforms
 import cv2
 import numpy as np
 import math
-
+from utils.tools import *
 
 class VOCDataset(Dataset):
     def __init__(self, index_file_path, image_size=448, grid_size=7, number_bbox=2, number_classes=20):
@@ -56,12 +56,12 @@ class VOCDataset(Dataset):
         cell_size = 1.0 / self.grid_size  # cause bbox center coordinate is a factor to width and height
         for index_of_bbox, bbox in enumerate(boxes_np):
             center_xy = bbox[0:2]
-            j = math.floor(center_xy[0]/cell_size)
-            i = math.floor(center_xy[1]/cell_size)
+            j = math.floor(center_xy[0] / cell_size)
+            i = math.floor(center_xy[1] / cell_size)
 
             bbox_wh = bbox[2:4]
             label = labels_np[index_of_bbox]
-            corner_left_top = np.array([i*cell_size, j*cell_size])
+            corner_left_top = np.array([i * cell_size, j * cell_size])
             real_center_xy = (center_xy - corner_left_top) / cell_size
 
             target_label[i, j, 0:2] = real_center_xy
@@ -81,19 +81,49 @@ class VOCDataset(Dataset):
                                    interpolation=cv2.INTER_LINEAR)
         current_image = cv2.cvtColor(current_image, cv2.COLOR_BGR2RGB)
         current_image = np.ascontiguousarray(current_image, dtype=np.float32)
-        current_image = self.to_tensor(current_image)
+        current_image = normalize_image(current_image)
+        # # 在进一步处理后，转换回 BGR 格式以便使用 cv2.imshow 显示
+        current_image_rgb = (current_image*255).astype(np.uint8)
+        current_image_bgr = cv2.cvtColor(current_image_rgb, cv2.COLOR_RGB2BGR)
+        # 使用OpenCV显示图片
+        # print(current_image_bgr[1, 1, :])
+        # cv2.imshow('test', current_image_bgr)
+        # cv2.waitKey(0)
+        # cv2.destroyAllWindows()
 
+        current_image = self.to_tensor(current_image)
+        print(current_image.shape)
         return current_image, target_label
 
 
-def draw_bbox(image, bbox, grid_size, cell_size, image_size, color=(0, 255, 0), thickness=2):
+names = [
+    "aeroplane",
+    "bicycle",
+    "bird",
+    "boat",
+    "bottle",
+    "bus",
+    "car",
+    "cat",
+    "chair",
+    "cow",
+    "diningtable",
+    "dog",
+    "horse",
+    "motorbike",
+    "person",
+    "pottedplant",
+    "sheep",
+    "sofa",
+    "train",
+    "tvmonitor",
+]
+
+
+def draw_bbox(image, bbox, label_index, grid_size, cell_size, image_size, color=(0, 255, 0), thickness=2):
     # bbox = [center_x, center_y, w, h] (相对坐标)
     center_xy = bbox[0:2]
     bbox_wh = bbox[2:4]
-
-    # 计算边界框的格子位置
-    cell_x = int(center_xy[0] * grid_size)
-    cell_y = int(center_xy[1] * grid_size)
 
     # 计算边界框的实际坐标
     center_x, center_y = center_xy
@@ -113,7 +143,6 @@ def draw_bbox(image, bbox, grid_size, cell_size, image_size, color=(0, 255, 0), 
     top_left = (max(0, top_left[0]), max(0, top_left[1]))
     bottom_right = (min(image.shape[1] - 1, bottom_right[0]), min(image.shape[0] - 1, bottom_right[1]))
 
-    # 绘制边界框
     # 确保 image 是 uint8 类型的连续数组
     if not isinstance(image, np.ndarray):
         raise TypeError("image should be a NumPy array")
@@ -121,8 +150,14 @@ def draw_bbox(image, bbox, grid_size, cell_size, image_size, color=(0, 255, 0), 
         raise TypeError("image dtype should be uint8")
     if len(image.shape) != 3 or image.shape[2] != 3:
         raise ValueError("image should be a 3-channel (H, W, C) array")
-    image = np.zeros((448, 448, 3), dtype=np.uint8)
+
     image = cv2.rectangle(image, top_left, bottom_right, color, thickness)
+
+    # 获取标签名称
+    label_name = names[label_index]
+    label_position = (top_left[0], top_left[1] - 10)  # 在边界框上方绘制标签
+    image = cv2.putText(image, label_name, label_position, cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1, cv2.LINE_AA)
+
     return image
 
 
@@ -131,43 +166,47 @@ def test_voc_dataset():
     # 设置路径
     index_file_path = '/home/wangyu/dataset/VOCdevkit/VOC2012/YoloLabelsIndex/train.txt'
     image_size = 448
-    grid_size = 7
+    grid_number = 7
     number_bbox = 2
     number_classes = 20
 
     # 实例化数据集
-    dataset = VOCDataset(index_file_path, image_size, grid_size, number_bbox, number_classes)
+    dataset = VOCDataset(index_file_path, image_size, grid_number, number_bbox, number_classes)
 
     # 测试数据集的长度
     print(f"Dataset length: {len(dataset)}")
 
     # 测试加载单个数据样本
-    data_loader = DataLoader(dataset, batch_size=1, shuffle=True)
+    data_loader = DataLoader(dataset, batch_size=1, shuffle=False)
 
     # 获取一个批次的数据
     for images, labels in data_loader:
         print(f"Image shape: {images.shape}")
         print(f"Label shape: {labels.shape}")
-
         # 显示图像
         image_np = images[0].numpy().transpose(1, 2, 0)  # 转换为(H, W, C)
         image_np = (image_np * 255).astype(np.uint8)  # 转换为uint8类型
+        # 确保 image 是连续的
+        image_np = np.ascontiguousarray(image_np)
 
         # 画边界框
-        for i in range(grid_size):
-            for j in range(grid_size):
+        cell_size = 1.0 / grid_number
+        for i in range(grid_number):
+            for j in range(grid_number):
                 if labels[0][i][j][4] == 1.0:  # 仅当有目标存在时
                     bbox = labels[0][i][j][0:4]  # 获取边界框坐标
+                    class_index = np.argmax(labels[0][i][j][5:])  # 获取类别索引
                     # 计算当前格子位置
-                    cell_size = 1.0 / grid_size
                     bbox_offset = [i * cell_size, j * cell_size]
                     bbox_center = [bbox[0] * cell_size + bbox_offset[0], bbox[1] * cell_size + bbox_offset[1]]
-                    bbox_wh = [bbox[2] * cell_size, bbox[3] * cell_size]
+                    bbox_wh = [bbox[2], bbox[3]]
                     bbox_in_image = [bbox_center[0], bbox_center[1], bbox_wh[0], bbox_wh[1]]
 
-                    image_np = draw_bbox(image_np, bbox_in_image, grid_size, cell_size, image_size)
+                    image_np = draw_bbox(image_np, bbox_in_image, class_index, grid_number, cell_size, image_size)
 
         # 使用OpenCV显示图片
+        # 输出转换后的图像信息和一些像素值
+        image_np = cv2.cvtColor(image_np, cv2.COLOR_RGB2BGR)
         cv2.imshow('Image', image_np)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
