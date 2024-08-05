@@ -120,7 +120,7 @@ names = [
 ]
 
 
-def draw_bbox(image, bbox, label_index, grid_size, cell_size, image_size, color=(0, 255, 0), thickness=2):
+def draw_bbox(image, bbox, label_index, grid_size, cell_size, image_size, color=(0, 255, 0), thickness=1):
     # bbox = [center_x, center_y, w, h] (相对坐标)
     center_xy = bbox[0:2]
     bbox_wh = bbox[2:4]
@@ -177,7 +177,7 @@ def test_voc_dataset():
     print(f"Dataset length: {len(dataset)}")
 
     # 测试加载单个数据样本
-    data_loader = DataLoader(dataset, batch_size=1, shuffle=False)
+    data_loader = DataLoader(dataset, batch_size=1, shuffle=True)
 
     # 获取一个批次的数据
     for images, labels in data_loader:
