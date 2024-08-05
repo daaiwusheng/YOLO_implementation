@@ -39,7 +39,6 @@ class VOCDataset(Dataset):
                     self.labels_list.append(labels)
                 f_label_file.close()
                 count += 1
-                print(line)
         f_data_index.close()
         print(
             f'{count}, images number is {len(self.image_paths_list)}, {len(self.boxes_list)},  {len(self.labels_list)}')
@@ -92,7 +91,7 @@ class VOCDataset(Dataset):
         # cv2.destroyAllWindows()
 
         current_image = self.to_tensor(current_image)
-        print(current_image.shape)
+        # print(current_image.shape)
         return current_image, target_label
 
 
