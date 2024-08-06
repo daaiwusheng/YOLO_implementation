@@ -40,8 +40,8 @@ class VOCDataset(Dataset):
                 f_label_file.close()
                 count += 1
         f_data_index.close()
-        print(
-            f'{count}, images number is {len(self.image_paths_list)}, {len(self.boxes_list)},  {len(self.labels_list)}')
+        # print(f'{count}, images number is {len(self.image_paths_list)}, {len(self.boxes_list)},
+        # {len(self.labels_list)}')
 
     def __len__(self):
         return len(self.image_paths_list)
