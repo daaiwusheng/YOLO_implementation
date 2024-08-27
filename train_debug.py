@@ -45,9 +45,9 @@ def train():
             images, targets = images.to(device), targets.to(device)
             predicted_results = yolo_v_1(images)
             # calculate loss
-            # print(images.shape)
-            # print(targets.shape)
-            # print(predicted_results.shape)
+            print(images.shape)  # torch.Size([16, 3, 448, 448])
+            print(targets.shape)  # torch.Size([16, 7, 7, 25])
+            print(predicted_results.shape)  # torch.Size([16, 7, 7, 30])
 
 
 if __name__ == '__main__':

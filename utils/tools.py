@@ -12,3 +12,7 @@ def normalize_image(image):
     # 归一化到 [0, 1]
     normalized_image = image.astype(np.float32) / 255.0
     return normalized_image
+
+
+
+
